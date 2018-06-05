@@ -2,10 +2,19 @@ package mymapsapp.com.blackc0650.example.com.cameronblack_mymapsapp;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Criteria;
+import android.location.Geocoder;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.EditText;
+import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -14,10 +23,21 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Locale;
+
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
     private GoogleMap mMap;
-
+    private EditText locationSearch;
+    private Location myLocation;
+    private boolean gotMyLocationOneTime;
+    private LocationManager locationManager;
+    public boolean isGPSEnabled = false;
+    private boolean isNetworkEnabled = false;
+    private static final long MIN_TIME_BW_UPDATES = 1000 * 5;
+    private static final float MIN_DISTANCE_CHANCE_FOR_UPDATES = 0.0f;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -62,7 +82,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mMap.setMyLocationEnabled(true);
         }
         //Add a view button and method to switch between satelite and map views
-
+        locationSearch = (EditText) findViewById(R.id.editText_addr);
     }
     public void toggleView() {
         if(mMap.getMapType() == GoogleMap.MAP_TYPE_NORMAL) {
@@ -70,6 +90,130 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
         else {
             mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+        }
+        gotMyLocationOneTime = false;
+        getLocation();
+    }
+    public void onSearch(View view) {
+        String location = locationSearch.getText().toString();
+        List<Address> addressList = null;
+        List<Address> addressListZip = null;
+        //Use location manager for user location
+        //implement location listener interface to setup location services
+        LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        Criteria criteria = new Criteria();
+        String provider = locationManager.getBestProvider(criteria,false);
+        LatLng userLocation = null;
+        Log.d("myMapsApp","onSearch:  Location = " + location);
+        Log.d("myMapsApp","onSearch:  Provider =" + provider);
+        //Check the last know location, need to specifically list the provider (network or gps)
+        try {
+            if(provider != null) {
+                Log.d("MyMapsApp","onSearch: location Manager is not null");
+                if((myLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)) != null) {
+                    userLocation = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
+                    Log.d("MyMapsApp","using NETWORK_PROVIDER userLocation is:" + myLocation.getLatitude() + " : " + myLocation.getLongitude());
+                    Toast.makeText(this,"UserLoc" + myLocation.getLatitude() + " : " + myLocation.getLongitude(), Toast.LENGTH_SHORT);
+
+                }
+                else if((myLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)) != null) {
+                    userLocation = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
+                    Log.d("MyMapsApp","using NETWORK_PROVIDER userLocation is:" + myLocation.getLatitude() + " : " + myLocation.getLongitude());
+                    Toast.makeText(this,"UserLoc" + myLocation.getLatitude() + " : " + myLocation.getLongitude(), Toast.LENGTH_SHORT);
+
+                }
+                else {
+                    Log.d("MyMapsApp","onSearch: myLocation is null from getLastKnowLocation");
+                }
+            }
+        }
+        catch(SecurityException | IllegalArgumentException exception) {
+            Log.d("MyMapsApp","onSearch: Exception getLastKnownLocation ");
+            Toast.makeText(this,"onSearch: Exception getLastKnownLocation",Toast.LENGTH_SHORT);
+        }
+        //Get the location if it exists
+        if(!(location.matches(""))) {
+            Log.d("MyMapsApp","onSearch: location field is populated ");
+            Geocoder geocoder = new Geocoder(this, Locale.US);
+            try {
+                //Get a list of the addresses
+                addressList = geocoder.getFromLocationName(location, 100, userLocation.latitude - (5.0 / 60), userLocation.longitude - (5.0 / 60), userLocation.latitude + (5.0 / 60), userLocation.longitude + (5.0 / 60));
+
+            }
+            catch(IOException e) {
+                e.printStackTrace();
+            }
+            if(!addressList.isEmpty()) {
+                Log.d("MyMapsApp","onSearch: address list size: " + addressList.size());
+                int i = -1;
+                for(Address address : addressList) {
+                    LatLng latLng = new LatLng(address.getLatitude(), address.getLongitude());
+                    mMap.addMarker(new MarkerOptions().position(latLng).title(++i + ": " + address.getSubThoroughfare()));
+                    mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
+                }
+            }
+        }
+
+    }
+    public void getLocation() {
+        try {
+            locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+            //Get GPS status
+            isGPSEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+            if(isGPSEnabled)
+                Log.d("MyMapsApp","getLocation: GPS is enabled");
+            isNetworkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+            if(isNetworkEnabled)
+                Log.d("MyMapsApp","getLocation: Network is enabled");
+            if(!isGPSEnabled && !isNetworkEnabled) {
+                Log.d("MyMapsApp","getLocation: no provider enabled");
+            }
+            else {
+                if(isNetworkEnabled) {
+                    //Request location updates
+                    if(ActivityCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this,Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        return;
+                    }
+                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANCE_FOR_UPDATES, locationListenerNetwork);
+                }
+                if(isGPSEnabled) {
+                    //locationManager request for GPS_PROVIDER
+                }
+            }
+        }
+        catch(Exception e) {
+            Log.d("MyMapsApp","getLocation: Exception in getLocation");
+            e.printStackTrace();
+        }
+    }
+    //LocationListener to setup callbacks for requestLocationUpdates
+    LocationListener locationListenerNetwork = new LocationListener() {
+        @Override
+        public void onLocationChanged(Location location) {
+            dropAMarker(LocationManager.NETWORK_PROVIDER);
+            if(gotMyLocationOneTime == false) {
+                locationManager.removeUpdates(this);
+                locationManager.removeUpdates(locationListenerGps);
+                gotMyLocationOneTime = true;
+            }
+            else {
+                
+            }
+        }
+
+        @Override
+        public void onStatusChanged(String provider, int status, Bundle extras) {
+
+        }
+
+        @Override
+        public void onProviderEnabled(String provider) {
+
+        }
+
+        @Override
+        public void onProviderDisabled(String provider) {
+
         }
     }
 }
