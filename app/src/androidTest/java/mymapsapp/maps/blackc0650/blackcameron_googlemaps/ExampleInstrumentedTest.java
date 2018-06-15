@@ -1,4 +1,4 @@
-package mymapsapp.com.blackc0650.example.com.cameronblack_mymapsapp;
+package mymapsapp.maps.blackc0650.blackcameron_googlemaps;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
@@ -21,6 +21,6 @@ public class ExampleInstrumentedTest {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getTargetContext();
 
-        assertEquals("mymapsapp.com.blackc0650.example.com.cameronblack_mymapsapp", appContext.getPackageName());
+        assertEquals("mymapsapp.maps.blackc0650.blackcameron_googlemaps", appContext.getPackageName());
     }
 }

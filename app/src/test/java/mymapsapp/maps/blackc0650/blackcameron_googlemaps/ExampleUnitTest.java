@@ -1,4 +1,4 @@
-package mymapsapp.com.blackc0650.example.com.cameronblack_mymapsapp;
+package mymapsapp.maps.blackc0650.blackcameron_googlemaps;
 
 import org.junit.Test;
 

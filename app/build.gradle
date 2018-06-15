@@ -3,7 +3,7 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 27
     defaultConfig {
-        applicationId "mymapsapp.com.blackc0650.example.com.cameronblack_mymapsapp"
+        applicationId "mymapsapp.maps.blackc0650.blackcameron_googlemaps"
         minSdkVersion 19
         targetSdkVersion 27
         versionCode 1
